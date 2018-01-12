@@ -1,0 +1,28 @@
+[Unit]
+Description=Daemon for vault
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=on-failure
+StartLimitInterval=20
+StartLimitBurst=5
+TimeoutStartSec=0
+Environment="HOME=/root"
+ExecStartPre=-/usr/bin/docker kill vault
+ExecStartPre=-/usr/bin/docker rm vault
+ExecStartPre=-/usr/bin/docker pull vault:0.9.1
+ExecStart=/usr/bin/docker run \
+        --net bridge -m 0b \
+        --log-driver=json-file --log-opt max-size=50m --log-opt max-file=10 \
+        -p 8200:8200 \
+        -v /etc/certs:/etc/certs \
+        -v /etc/vault:/vault/config \
+        --name vault \
+        --cap-add=IPC_LOCK \
+        vault:0.9.1 vault server -config /vault/config
+
+ExecStop=-/usr/bin/docker stop -t 45 vault
+
+[Install]
+WantedBy=multi-user.target

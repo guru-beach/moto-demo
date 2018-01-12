@@ -1,2 +1,3 @@
-# moto-demo
-Moto Corp needs TLS certs, how will they ever survive?
+# Moto Corp Demo
+
+Vagrantfile based on https://github.com/coreos/coreos-vagrant/
