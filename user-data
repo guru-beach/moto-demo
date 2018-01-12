@@ -42,7 +42,6 @@ coreos:
 
    - name: docker-vault.service
      enable: true
-     command: start
      content: |
        [Unit]
        Description=Daemon for vault
@@ -73,9 +72,8 @@ coreos:
        [Install]
        WantedBy=multi-user.target
 
-   - name: docker-vault.service
+   - name: docker-vault-dev.service
      enable: true
-     command: start
      content: |
        [Unit]
        Description=Dev Daemon for vault

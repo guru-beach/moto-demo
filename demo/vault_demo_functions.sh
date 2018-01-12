@@ -13,11 +13,13 @@ vault () {
               -e VAULT_ADDR=http://${VAULT_HOST}:${VAULT_PORT}"
 
   fi
+  VAULT_IP=$(docker inspect ${VAULT_DOCKER} | jq .[0].NetworkSettings.Networks.bridge.IPAddress | tr -d '"')
+
   docker run  \
     --cap-add=IPC_LOCK --rm \
     ${AUTH_ENV} \
     -v ${LOCAL_MOUNT}:${DOCKER_MOUNT} \
-    --add-host vault1.dev.moto.com:172.18.0.2 \
+    --add-host vault1.dev.moto.com:${VAULT_IP} \
     vault $@
 }
 
@@ -29,6 +31,38 @@ vault_dev_server () {
     --name dev-vault \
     --add-host vault1.dev.moto.com:172.18.0.2 \
     vault 
+}
+
+revoke () {
+  PKI_PATH=$1
+  SERIAL=$2
+   
+  CURL_CERTS=''
+  if [ -n "${VAULT_USE_TLS}" ];then
+    CURL_CERTS="--cacert /etc/certs/vault1.dev.moto.com_ca_chain_full.pem  --cert /etc/certs/vault1.dev.moto.com_crt.pem --key /etc/certs/vault1.dev.moto.com_key.pem"
+    VAULT_ADDR=https://${VAULT_HOST}:${VAULT_PORT}
+  fi
+
+  echo "{
+    \"serial_number\" : \"${SERIAL}\"
+  }" > ${LOCAL_INPUT_PARAMS}
+
+
+  echo "Revoking from ${PKI_PATH} serial ${SERIAL}"
+  curl -s \
+    --header "X-Vault-Token: ${VAULT_TOKEN}" \
+    ${CURL_CERTS} \
+    --request POST \
+    --data @${LOCAL_INPUT_PARAMS} \
+    ${VAULT_ADDR}/v1/${PKI_PATH}/revoke 
+
+  echo "Checking CRL"
+  curl -s \
+    --header "X-Vault-Token: ${VAULT_TOKEN}" \
+    ${CURL_CERTS} \
+    --request GET \
+    ${VAULT_ADDR}/v1/${PKI_PATH}/crl/pem | openssl crl -inform PEM -text -noout
+
 }
 
 bootstrap_ca () {

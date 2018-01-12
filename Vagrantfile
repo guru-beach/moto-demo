@@ -136,7 +136,9 @@ Vagrant.configure("2") do |config|
       if File.exist?(CLOUD_CONFIG_PATH)
         config.vm.provision :file, :source => "#{CLOUD_CONFIG_PATH}", :destination => "/tmp/vagrantfile-user-data"
         config.vm.provision :shell, :inline => "mv /tmp/vagrantfile-user-data /var/lib/coreos-vagrant/", :privileged => true
+        config.vm.provision :shell, :inline => "mkdir -p /etc/vault", :privileged => true
         config.vm.provision :shell, :inline => "cp /demo/etc/vault/* /etc/vault", :privileged => true
+        config.vm.provision :shell, :inline => "echo #{ip} vault1.dev.moto.com >> /etc/hosts", :privileged => true
       end
 
     end

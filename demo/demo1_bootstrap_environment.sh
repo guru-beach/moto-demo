@@ -4,8 +4,13 @@
 # Read in all shared functions
 . vault_demo_functions.sh
 
+
+
 # We don't want to use TLS at this point so make this nothing
 VAULT_USE_TLS=
+# Pull early so time it takes to pull down doesn't affect runs from service start
+/usr/bin/docker pull vault:0.9.1
+
 # Since we're running with two different names, deconflict the variable
 # Run a dev version of the vault server to bootstrap the certs
 echo "Starting Vault Dev Server"
