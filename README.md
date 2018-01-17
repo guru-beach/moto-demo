@@ -19,6 +19,8 @@ Requires a current version of Vagrant installed on the client machine. Run with 
 Requires sudo access to run docker updates.   
 
 ```
+$ git clone git@github.com:guru-beach/moto-demo.git
+$ cd moto-demo
 $ vagrant up
 $ vagrant ssh
 core@core-01 ~ $ sudo su -
