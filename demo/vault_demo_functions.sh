@@ -24,6 +24,7 @@ vault () {
 }
 
 vault_dev_server () {
+    # Run an in memory vault server.   This should only be used for bootstrapping, but could be used for other testing as well.
     docker rm dev-vault
     docker run  \
     --cap-add=IPC_LOCK --rm \
@@ -34,6 +35,7 @@ vault_dev_server () {
 }
 
 revoke () {
+  # Revoke a certificate and place an entry in the CRL hosted in Vault
   PKI_PATH=$1
   SERIAL=$2
    
@@ -67,7 +69,10 @@ revoke () {
 
 bootstrap_ca () {
   
+  # Bootstraps CA and initial client certificates for securing Vault with TLS
 
+  # TODO
+  # This is hard coded in here, should probably be abstracted out to allow any name
   CURL_CERTS=''
   if [ -n "${VAULT_USE_TLS}" ];then
     CURL_CERTS="--cacert /etc/certs/vault1.dev.moto.com_ca_chain_full.pem  --cert /etc/certs/vault1.dev.moto.com_crt.pem --key /etc/certs/vault1.dev.moto.com_key.pem"
@@ -161,6 +166,8 @@ bootstrap_ca () {
 }
 
 create_role () {
+  # Roles have permissions to create certificates for certain domains
+  # This process creates leases which are probably not necessary for short-lived TTLs
   ROLE=${1:-$PKI_ROLE}
   LOCAL_PATH=${2:-$PKI_PATH}
   DOMAINS=${3:-$PKI_DOMAIN}
@@ -189,6 +196,9 @@ issue_cert () {
     common_name=${DOMAIN} \
     ttl=${TTL} > ${OUTPUT_FILE}
 
+ 
+  # These are being written out to the filesystem, but could easily just be consumed 
+  # in memory by any API
   echo "Writing CA Chain ${LOCAL_MOUNT}/${DOMAIN}_ca_chain.pem"
   jq -r .data.ca_chain[0] ${OUTPUT_FILE} > ${LOCAL_MOUNT}/${DOMAIN}_ca_chain.pem
   echo "Writing Full CA Chain ${LOCAL_MOUNT}/${DOMAIN}_ca_chain_full.pem"
