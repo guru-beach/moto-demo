@@ -2,6 +2,8 @@
 
 Vagrantfile based on https://github.com/coreos/coreos-vagrant/
 
+DO NOT RUN THIS DEMO IN PRODUCTION!!!   There are some hard coded values like the Consul encrypt hash which are open to the internet.  This should only be used for demonstration purposes and then killed.
+
 This is a Demo to show how to use Hashicorp Vault for creating static and dynamic TLS certificates.   
 
 Basic Setup:
@@ -25,6 +27,7 @@ $ vagrant up
 $ vagrant ssh
 core@core-01 ~ $ sudo su -
 core-01 ~ # cd /demo
+core-01 demo #
 ```
 
 ## Demo 1
@@ -32,7 +35,7 @@ core-01 ~ # cd /demo
 This demo bootstraps the TLS certificates needed to secure both Vault and Consul.  Currently only Vault is using TLS for client communication, though the consul client certs are created.  Once bootstrapped, all client connects will use the TLS certs.
 
 ```
-$ ./demo1_bootstrap_environment.sh
+core-01 demo # ./demo1_bootstrap_environment.sh
 ```
 
 ## Demo 2
@@ -42,7 +45,7 @@ This demo shows what it looks like to use short-lived TTLs with Vault.   Validit
 Leave this demo running!
 
 ```
-$ ./demo2_short_ttls.sh
+core-01 demo # ./demo2_short_ttls.sh
 ```
 
 ## Demo 3
@@ -53,7 +56,7 @@ This demo shows how a dynamic cert with TTLs can stay valid by using the renew e
 You can kill this process after a few minutes of showing the renewals work and wait for 60s to demonstrate how missing renewals affects the Demo2 process.
 
 ```
-$ ./demo3_renew_lease.sh
+core-01 demo # ./demo3_renew_lease.sh
 ```
 
 
@@ -64,5 +67,16 @@ This demo shows how certificate revocation with Vault updates the CRL automatica
 This demo should be run in another window alongside the currently running Demo2/3 windows.
 
 ```
-$ ./demo4_revoke_cert.sh
+core-01 demo # ./demo4_revoke_cert.sh
 ```
+
+## Cleanup
+
+Though probably not a huge security risk, it's best to tear down this demo when done.
+
+```
+core-01 demo # exit
+core@core-01 ~ $ exit
+$ vagrant destroy
+```
+
