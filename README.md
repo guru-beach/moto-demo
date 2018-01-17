@@ -15,6 +15,16 @@ This works best if you use a terminal multiplexer (tmux) or a terminal that allo
 ## Prerequisites 
 Requires a current version of Vagrant installed on the client machine. Run with 2.0.1 successfully.
 
+## Start
+Requires sudo access to run docker updates.   
+
+```
+$ vagrant up
+$ vagrant ssh
+core@core-01 ~ $ sudo su -
+core-01 ~ # cd /demo
+```
+
 ## Demo 1
 
 This demo bootstraps the TLS certificates needed to secure both Vault and Consul.  Currently only Vault is using TLS for client communication, though the consul client certs are created.  Once bootstrapped, all client connects will use the TLS certs.
@@ -30,7 +40,7 @@ This demo shows what it looks like to use short-lived TTLs with Vault.   Validit
 Leave this demo running!
 
 ```
-$ /demo/demo2_short_ttls.sh
+$ ./demo2_short_ttls.sh
 ```
 
 ## Demo 3
@@ -41,7 +51,7 @@ This demo shows how a dynamic cert with TTLs can stay valid by using the renew e
 You can kill this process after a few minutes of showing the renewals work and wait for 60s to demonstrate how missing renewals affects the Demo2 process.
 
 ```
-$ /demo/demo3_renew_lease.sh
+$ ./demo3_renew_lease.sh
 ```
 
 
@@ -52,7 +62,5 @@ This demo shows how certificate revocation with Vault updates the CRL automatica
 This demo should be run in another window alongside the currently running Demo2/3 windows.
 
 ```
-$ /demo/demo4_revoke_cert.sh
+$ ./demo4_revoke_cert.sh
 ```
-
-
