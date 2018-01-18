@@ -11,6 +11,7 @@ VAULT_ADDR=https://${VAULT_HOST}:${VAULT_PORT}
 
 CERT_BASE=shortttl.demo.moto.com
 while true;do
+    echo "$(date +%H:%M:%S): Renewing Certificate"
     issue_cert shortttl.demo.moto.com 60 pki_int_main short-ttl-moto-com
     sleep 30
 done
