@@ -20,7 +20,7 @@ CERT_BASE=shortttl.demo.moto.com
 issue_cert shortttl.demo.moto.com 60 pki_int_main short-ttl-moto-com
 
 while true;do
-  echo -n "$(date +%H:%M:%S): " 
+  echo -n "$(date +%H:%M:%S): Verifying Certificate: " 
   verify ${CERT_BASE}
   sleep 5
 done
