@@ -1,3 +1,21 @@
+#!/bin/bash
+# 
+# generate-provisioners.sh
+#
+# PURPOSE: Generates the user-data file used by Vagrant by sourcing environment variables in demo/default_env.sh.   This allows for easily updating consul and vault versions without having to re-write versions directly.
+
+. demo/default_env.sh
+
+cat > provision.sh <<EOL
+. /demo/default_env.sh
+mkdir -p /etc/vault
+cp /demo/etc/vault/* /etc/vault
+
+IP=\$(ip -f inet addr show eth1 | grep -Po 'inet \K[\d.]+')
+echo \${IP} vault1.\${DEMO_DOMAIN} >> /etc/hosts
+EOL
+
+cat > user-data <<EOF 
 #cloud-config
 
 coreos:
@@ -19,20 +37,20 @@ coreos:
        Environment="HOME=/root"
        ExecStartPre=-/usr/bin/docker kill consul
        ExecStartPre=-/usr/bin/docker rm consul
-       ExecStartPre=-/usr/bin/docker pull consul:1.0.6
-       ExecStart=/usr/bin/docker run \
-         --rm \
-         --net bridge -m 0b \
-         -p 8300:8300 -p 8301:8301 -p 8301:8301/udp \
-         -p 8302:8302 -p 8302:8302/udp -p 8400:8400 \
-         -p 8500:8500 \
-         -v /var/consul/data:/consul/data \
-         -v /etc/certs:/etc/certs \
-         -h consul1.dev.hashidemos.com \
-         --name consul \
-         consul:1.0.6 agent -ui \
-         -node=consul1.dev.hashidemos.com -datacenter=dev -advertise=172.17.8.101 \
-         -bind=0.0.0.0 -client=0.0.0.0 -encrypt=D8Er0YYpXOkM4QFm0eErFw== \
+       ExecStartPre=-/usr/bin/docker pull ${CONSUL_IMAGE}
+       ExecStart=/usr/bin/docker run \\
+         --rm \\
+         --net bridge -m 0b \\
+         -p 8300:8300 -p 8301:8301 -p 8301:8301/udp \\
+         -p 8302:8302 -p 8302:8302/udp -p 8400:8400 \\
+         -p 8500:8500 \\
+         -v /var/consul/data:/consul/data \\
+         -v /etc/certs:/etc/certs \\
+         -h ${CONSUL_HOST} \\
+         --name consul \\
+         ${CONSUL_IMAGE} agent -ui \\
+         -node=${CONSUL_HOST} -datacenter=dev -advertise=172.17.8.101 \\
+         -bind=0.0.0.0 -client=0.0.0.0 -encrypt=D8Er0YYpXOkM4QFm0eErFw== \\
          -data-dir=/consul/data -config-dir=/consul/config  -bootstrap-expect=1 -server
        
        ExecStop=-/usr/bin/docker stop -t 45 consul
@@ -56,16 +74,16 @@ coreos:
        Environment="HOME=/root"
        ExecStartPre=-/usr/bin/docker kill vault
        ExecStartPre=-/usr/bin/docker rm vault
-       ExecStartPre=-/usr/bin/docker pull vault:0.10.1
-       ExecStart=/usr/bin/docker run \
-         --net bridge -m 0b \
-         --log-driver=json-file --log-opt max-size=50m --log-opt max-file=10 \
-         -p 8200:8200 \
-         -v /etc/certs:/etc/certs \
-         -v /etc/vault:/vault/config \
-         --name vault \
-         --cap-add=IPC_LOCK \
-         vault:0.10.1 vault server -config /vault/config
+       ExecStartPre=-/usr/bin/docker pull ${VAULT_IMAGE}
+       ExecStart=/usr/bin/docker run \\
+         --net bridge -m 0b \\
+         --log-driver=json-file --log-opt max-size=50m --log-opt max-file=10 \\
+         -p 8200:8200 \\
+         -v /etc/certs:/etc/certs \\
+         -v /etc/vault:/vault/config \\
+         --name vault \\
+         --cap-add=IPC_LOCK \\
+         ${VAULT_IMAGE} vault server -config /vault/config
        
        ExecStop=-/usr/bin/docker stop -t 45 vault
        
@@ -88,15 +106,17 @@ coreos:
        Environment="HOME=/root"
        ExecStartPre=-/usr/bin/docker kill dev-vault
        ExecStartPre=-/usr/bin/docker rm dev-vault
-       ExecStartPre=-/usr/bin/docker pull vault:0.10.1
-       ExecStart=/usr/bin/docker run \
-         --net bridge -m 0b \
-         -p 8200:8200 \
-         --name dev-vault \
-         --cap-add=IPC_LOCK \
-         vault:0.10.1 server -dev
+       ExecStartPre=-/usr/bin/docker pull ${VAULT_IMAGE}
+       ExecStart=/usr/bin/docker run \\
+         --net bridge -m 0b \\
+         -p 8200:8200 \\
+         --name dev-vault \\
+         --cap-add=IPC_LOCK \\
+         ${VAULT_IMAGE} server -dev
        
        ExecStop=-/usr/bin/docker stop -t 45 dev-vault
        
        [Install]
        WantedBy=multi-user.target
+EOF
+

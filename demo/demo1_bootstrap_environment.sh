@@ -4,12 +4,10 @@
 # Read in all shared functions
 . vault_demo_functions.sh
 
-
-
 # We don't want to use TLS at this point so make this nothing
 VAULT_USE_TLS=
 # Pull early so time it takes to pull down doesn't affect runs from service start
-/usr/bin/docker pull vault:0.9.1
+/usr/bin/docker pull ${VAULT_IMAGE}
 
 # Since we're running with two different names, deconflict the variable
 # Run a dev version of the vault server to bootstrap the certs
@@ -41,19 +39,20 @@ mkdir -p /etc/vault
 bootstrap_ca
 
 # Create the roles that will create the certs
-create_role moto-com pki_int_main moto.com ${INTERMEDIATE_CERT_TTL}
-create_role consul-dev-moto-com pki_int_main dev.moto.com ${INTERMEDIATE_CERT_TTL}
-create_role vault-dev-moto-com pki_int_main dev.moto.com ${INTERMEDIATE_CERT_TTL}
+# Change role names . to -
+create_role ${ROOT_DOMAIN/./-} pki_int_main ${ROOT_DOMAIN} ${INTERMEDIATE_CERT_TTL}
+create_role consul-${DEMO_DOMAIN/./-} pki_int_main ${DEMO_DOMAIN} ${INTERMEDIATE_CERT_TTL}
+create_role vault-${DEMO_DOMAIN/./-} pki_int_main ${DEMO_DOMAIN} ${INTERMEDIATE_CERT_TTL}
 
 # Issue certs
-issue_cert moto.com 168h pki_int_main moto-com
-issue_cert consul1.dev.moto.com 168h pki_int_main consul-dev-moto-com
-issue_cert vault1.dev.moto.com 168h pki_int_main vault-dev-moto-com
+issue_cert ${ROOT_DOMAIN} 168h pki_int_main ${ROOT_DOMAIN/./-}
+issue_cert ${CONSUL_HOST} 168h pki_int_main consul-${DEMO_DOMAIN/./-}
+issue_cert ${VAULT_HOST} 168h pki_int_main vault-${DEMO_DOMAIN/./-}
 
 # Copy the local mount files over to the certs directory.  This also gets mounted
 # Into the Consul and Vault docker containers for usage
 cp ${LOCAL_MOUNT}/*.pem /etc/certs
-cat /etc/certs/vault1.dev.moto.com_ca_chain.pem /etc/certs/CA_cert.pem > /etc/certs/vault1.dev.moto.com_ca_chain_full.pem
+cat /etc/certs/${VAULT_HOST}_ca_chain.pem /etc/certs/CA_cert.pem > /etc/certs/${VAULT_HOST}_ca_chain_full.pem
 
 # stop the dev server if we're done with it
 echo "Stopping Vault Dev Server"

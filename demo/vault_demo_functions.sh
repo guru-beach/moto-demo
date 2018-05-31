@@ -2,9 +2,9 @@ vault () {
   # Wrapper to run vault command line from docker instance.   Use local mount
   # for storing arbitrary data loaded on the local system
   if [ -n "${VAULT_USE_TLS}" ];then
-    AUTH_ENV="-e VAULT_CACERT=/etc/certs/vault1.dev.moto.com_ca_chain_full.pem \
-              -e VAULT_CLIENT_CERT=/etc/certs/vault1.dev.moto.com_crt.pem \
-              -e VAULT_CLIENT_KEY=/etc/certs/vault1.dev.moto.com_key.pem \
+    AUTH_ENV="-e VAULT_CACERT=/etc/certs/${VAULT_HOST}_ca_chain_full.pem \
+              -e VAULT_CLIENT_CERT=/etc/certs/${VAULT_HOST}_crt.pem \
+              -e VAULT_CLIENT_KEY=/etc/certs/${VAULT_HOST}_key.pem \
               -e VAULT_ADDR=https://${VAULT_HOST}:${VAULT_PORT} \
               -e VAULT_TOKEN=${VAULT_TOKEN} \
               -v /etc/certs:/etc/certs"
@@ -19,7 +19,7 @@ vault () {
     --cap-add=IPC_LOCK --rm \
     ${AUTH_ENV} \
     -v ${LOCAL_MOUNT}:${DOCKER_MOUNT} \
-    --add-host vault1.dev.moto.com:${VAULT_IP} \
+    --add-host ${VAULT_HOST}:${VAULT_IP} \
     vault $@
 }
 
@@ -30,7 +30,7 @@ vault_dev_server () {
     --cap-add=IPC_LOCK --rm \
     -v ${LOCAL_MOUNT}:${DOCKER_MOUNT} \
     --name dev-vault \
-    --add-host vault1.dev.moto.com:172.18.0.2 \
+    --add-host ${VAULT_HOST}:172.18.0.2 \
     vault 
 }
 
@@ -41,7 +41,7 @@ revoke () {
    
   CURL_CERTS=''
   if [ -n "${VAULT_USE_TLS}" ];then
-    CURL_CERTS="--cacert /etc/certs/vault1.dev.moto.com_ca_chain_full.pem  --cert /etc/certs/vault1.dev.moto.com_crt.pem --key /etc/certs/vault1.dev.moto.com_key.pem"
+    CURL_CERTS="--cacert /etc/certs/${VAULT_HOST}_ca_chain_full.pem  --cert /etc/certs/${VAULT_HOST}_crt.pem --key /etc/certs/${VAULT_HOST}_key.pem"
     VAULT_ADDR=https://${VAULT_HOST}:${VAULT_PORT}
   fi
 
@@ -71,21 +71,19 @@ bootstrap_ca () {
   
   # Bootstraps CA and initial client certificates for securing Vault with TLS
 
-  # TODO
-  # This is hard coded in here, should probably be abstracted out to allow any name
   CURL_CERTS=''
   if [ -n "${VAULT_USE_TLS}" ];then
-    CURL_CERTS="--cacert /etc/certs/vault1.dev.moto.com_ca_chain_full.pem  --cert /etc/certs/vault1.dev.moto.com_crt.pem --key /etc/certs/vault1.dev.moto.com_key.pem"
+    CURL_CERTS="--cacert /etc/certs/${VAULT_HOST}_ca_chain_full.pem  --cert /etc/certs/${VAULT_HOST}_crt.pem --key /etc/certs/${VAULT_HOST}_key.pem"
     VAULT_ADDR=https://${VAULT_HOST}:${VAULT_PORT}
   fi
 
   # Allow for certificate stores
   echo "Mounting CA Certificate PKI Backend"
-  vault mount pki
+  vault secrets enable pki
 
   # Set max lease time for root pki setup
   echo "Tuning CA Certificate PKI Backend"
-  vault mount-tune -max-lease-ttl=${ROOT_CERT_TTL} pki
+  vault secrets tune -max-lease-ttl=${ROOT_CERT_TTL} pki
 
   #  ttl=${ROOT_CERT_TTL}
 
@@ -119,11 +117,11 @@ bootstrap_ca () {
 
   # Setup intermediate CA endpoint
   echo "Mounting PKI Backend ${PKI_PATH}"
-  vault mount -path=${PKI_PATH} pki
+  vault secrets enable -path=${PKI_PATH} pki
 
   # Set max lease time for pki
   echo "Tuning PKI Backend ${PKI_PATH}"
-  vault mount-tune -max-lease-ttl=${MAX_TTL} ${PKI_PATH}
+  vault secrets tune -max-lease-ttl=${MAX_TTL} ${PKI_PATH}
 
   # Use the HTTP API versus the command version due to quote removal when passing bash arguments with quotes in them into functions like the docker run
   echo "{

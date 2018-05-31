@@ -9,10 +9,10 @@ VAULT_ADDR=https://${VAULT_HOST}:${VAULT_PORT}
 
 . initial_root_token
 
-CERT_BASE=shortttl.demo.moto.com
+CERT_BASE=shortttl.${DEMO_DOMAIN}
 while true;do
     echo "$(date +%H:%M:%S): Renewing Certificate"
-    issue_cert shortttl.demo.moto.com 60 pki_int_main short-ttl-moto-com
+    issue_cert ${CERT_BASE} 60 pki_int_main short-ttl-${ROOT_ROLE}
     sleep 30
 done
 

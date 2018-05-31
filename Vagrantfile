@@ -6,6 +6,7 @@ require 'fileutils'
 Vagrant.require_version ">= 1.6.0"
 
 CLOUD_CONFIG_PATH = File.join(File.dirname(__FILE__), "user-data")
+PROVISION_SCRIPT = File.join(File.dirname(__FILE__), "provision.sh")
 CONFIG = File.join(File.dirname(__FILE__), "config.rb")
 
 # Defaults for config options defined in CONFIG
@@ -136,9 +137,7 @@ Vagrant.configure("2") do |config|
       if File.exist?(CLOUD_CONFIG_PATH)
         config.vm.provision :file, :source => "#{CLOUD_CONFIG_PATH}", :destination => "/tmp/vagrantfile-user-data"
         config.vm.provision :shell, :inline => "mv /tmp/vagrantfile-user-data /var/lib/coreos-vagrant/", :privileged => true
-        config.vm.provision :shell, :inline => "mkdir -p /etc/vault", :privileged => true
-        config.vm.provision :shell, :inline => "cp /demo/etc/vault/* /etc/vault", :privileged => true
-        config.vm.provision :shell, :inline => "echo #{ip} vault1.dev.moto.com >> /etc/hosts", :privileged => true
+	config.vm.provision :shell, :path => "provision.sh", :privileged => true 
       end
 
     end
