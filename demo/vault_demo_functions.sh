@@ -23,7 +23,7 @@ vault () {
     ${AUTH_ENV} \
     -v ${LOCAL_MOUNT}:${DOCKER_MOUNT} \
     --add-host ${VAULT_HOST}:${VAULT_IP} \
-    vault $@
+    ${VAULT_IMAGE} $@
 }
 
 vault_dev_server () {
@@ -34,7 +34,7 @@ vault_dev_server () {
     -v ${LOCAL_MOUNT}:${DOCKER_MOUNT} \
     --name dev-vault \
     --add-host ${VAULT_HOST}:172.18.0.2 \
-    vault 
+    ${VAULT_IMAGE} 
 }
 
 revoke () {

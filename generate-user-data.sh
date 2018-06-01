@@ -9,8 +9,6 @@
 cat > provision.sh <<EOL
 . /demo/default_env.sh
 
-systemctl unmask locksmithd.service
-
 IP=\$(ip -f inet addr show eth1 | grep -Po 'inet \K[\d.]+')
 echo \${IP} vault1.\${DEMO_DOMAIN} >> /etc/hosts
 
@@ -45,6 +43,8 @@ systemd:
       mask: true
 
 coreos:
+  update:
+    reboot-strategy: off
   units:
    - name: docker-consul.service
      enable: true
