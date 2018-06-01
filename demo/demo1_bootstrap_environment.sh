@@ -11,7 +11,7 @@ VAULT_USE_TLS=
 
 # Since we're running with two different names, deconflict the variable
 # Run a dev version of the vault server to bootstrap the certs
-echo "Starting Vault Dev Server"
+echo $(green Starting Vault Dev Server)
 systemctl start docker-vault-dev
 sleep 10
 
@@ -55,13 +55,13 @@ cp ${LOCAL_MOUNT}/*.pem /etc/certs
 cat /etc/certs/${VAULT_HOST}_ca_chain.pem /etc/certs/CA_cert.pem > /etc/certs/${VAULT_HOST}_ca_chain_full.pem
 
 # stop the dev server if we're done with it
-echo "Stopping Vault Dev Server"
+echo $(green Stopping Vault Dev Server)
 systemctl stop docker-vault-dev
 
 # Go back to using the default name
 VAULT_DOCKER=${VAULT_DOCKER_PREV}
 # Now that the certs are in place, restart the services that probably failed on boot
-echo "Starting main production Vault and Consul"
+echo $(green Starting main production Vault and Consul)
 systemctl start docker-consul docker-vault
 sleep 10
 
@@ -71,7 +71,7 @@ OUTPUT_FILE=/demo/vault_init_output.txt
 INITIAL_ROOT_TOKEN=/demo/initial_root_token
 
 # Initialize vault and capture output.
-echo "Initializing Vault"
+echo $(green Initializing Vault)
 vault init | grep : > ${OUTPUT_FILE}
 
 # Yeah, I made fun of this in the slides, but that's different!
@@ -84,9 +84,9 @@ done
 
 # Capture the root token from the output
 echo "VAULT_TOKEN=$(cat ${OUTPUT_FILE} | grep "Initial Root Token" | cut -f 2 -d : | tr -d ' ')" > ${INITIAL_ROOT_TOKEN}
-echo "Saved Initial Root Token to ${INITIAL_ROOT_TOKEN}"
+echo $(green Saved Initial Root Token to ${INITIAL_ROOT_TOKEN})
 . ${INITIAL_ROOT_TOKEN}
 
 # Why bootstrap twice?  Well, because the dev server is dead and didn't persist anything
-echo "Bootstrapping CA"
+echo $(green Bootstrapping CA)
 bootstrap_ca

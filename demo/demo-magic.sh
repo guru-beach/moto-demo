@@ -11,6 +11,9 @@
 #
 ###############################################################################
 
+# Preferred demo prompt
+DEMO_PROMPT='[\u@\[\e[32;40m\]\h\[\e[0m\]]'
+
 # the speed to "type" the text
 TYPE_SPEED=20
 
@@ -20,6 +23,11 @@ NO_WAIT=false
 # if > 0, will pause for this amount of seconds before automatically proceeding with any p or pe
 PROMPT_TIMEOUT=0
 
+# Wait before a command is run
+PRE_WAIT=true
+# Wait after a command is run
+POST_WAIT=true
+
 # handy color vars for pretty prompts
 BLACK="\033[0;30m"
 BLUE="\033[0;34m"
@@ -27,9 +35,21 @@ GREEN="\033[0;32m"
 CYAN="\033[0;36m"
 RED="\033[0;31m"
 PURPLE="\033[0;35m"
-BROWN="\033[0;33m"
+YELLOW="\033[0;33m"
 WHITE="\033[1;37m"
 COLOR_RESET="\033[0m"
+
+green () {
+  echo -e "${GREEN}$@${COLOR_RESET}"
+}
+
+red () {
+  echo -e "${RED}$@${COLOR_RESET}"
+}
+
+yellow () {
+  echo -e "${YELLOW}$@${COLOR_RESET}"
+}
 
 ##
 # prints the script usage
@@ -69,12 +89,13 @@ function wait() {
 function p() {
   cmd=$1
 
+  echo ""
   # render the prompt
   x=$(PS1="$DEMO_PROMPT" "$BASH" --norc -i </dev/null 2>&1 | sed -n '${s/^\(.*\)exit$/\1/p;}')
   printf "$x"
 
   # wait for the user to press a key before typing the command
-  if !($NO_WAIT); then
+  if [[ -n $PRE_WAIT ]]; then
     wait
   fi
 
@@ -85,9 +106,10 @@ function p() {
   fi
 
   # wait for the user to press a key before moving on
-  if !($NO_WAIT); then
+  if $POST_WAIT; then
     wait
   fi
+  echo ""
   echo ""
 }
 
@@ -105,6 +127,7 @@ function pe() {
 
   # execute the command
   eval "$@"
+  echo ""
 }
 
 ##
@@ -145,13 +168,13 @@ function check_pv() {
   }
 }
 
-check_pv
+#check_pv
 #
 # handle some default params
 # -h for help
 # -d for disabling simulated typing
 #
-while getopts ":dhnw:" opt; do
+while getopts ":dhnptw:" opt; do
   case $opt in
     h)
       usage
@@ -162,6 +185,14 @@ while getopts ":dhnw:" opt; do
       ;;
     n)
       NO_WAIT=true
+      unset PRE_WAIT
+      unset POST_WAIT
+      ;;
+    p)
+      unset PRE_WAIT
+      ;;
+    t)
+      unset POST_WAIT
       ;;
     w)
       PROMPT_TIMEOUT=$OPTARG

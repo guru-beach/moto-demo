@@ -1,15 +1,12 @@
 . /demo/default_env.sh
 
-
-# hosts entry for local name resolution
 IP=$(ip -f inet addr show eth1 | grep -Po 'inet \K[\d.]+')
-echo ${IP} ${VAULT_HOST} >> /etc/hosts
+echo ${IP} vault1.${DEMO_DOMAIN} >> /etc/hosts
 
-# Create vault directory and configuration file
 mkdir -p /etc/vault
-cat > /etc/vault/config.hcl <<EOL
+cat > /etc/vault/config.hcl <<EOF
 storage "consul" {
-  address = "172.17.8.101:8500"
+  address = "${IP}:8500"
   path    = "vault"
 }
 
@@ -19,4 +16,8 @@ listener "tcp" {
   tls_key_file       = "/etc/certs/${VAULT_HOST}_key.pem"
   tls_client_ca_file = "/etc/certs/${VAULT_HOST}_ca_chain.pem"
 }
-EOL
+EOF
+
+mkdir -p /etc/bash/bashrc.d
+echo "alias ll='ls -latr'" >> /etc/bash/bashrc.d/jake_preferences
+echo "set -o vi" >> /etc/bash/bashrc.d/jake_preferences
