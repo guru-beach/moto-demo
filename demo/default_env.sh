@@ -1,3 +1,4 @@
+ROOT_PKI_MOUNT=pki
 ROOT_DOMAIN=hashidemos.com
 DEMO_DOMAIN=dev.${ROOT_DOMAIN}
 

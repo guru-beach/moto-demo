@@ -18,7 +18,9 @@ fi
 
 CERT_BASE=shortttl.${DEMO_DOMAIN}
 issue_cert ${CERT_BASE} 60 pki_int_main short-ttl-${ROOT_ROLE}
+echo
 
+echo $(yellow "Testing certificate validity using openssl")
 while true;do
   echo -n "$(date +%H:%M:%S): Verifying Certificate: " 
   verify ${CERT_BASE}

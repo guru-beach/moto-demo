@@ -38,8 +38,11 @@ mkdir -p /etc/vault
 
 bootstrap_ca
 
+echo $(yellow "Roles are the entities allowed to create certificates")
+echo
 # Create the roles that will create the certs
 # Change role names . to -
+
 create_role ${ROOT_DOMAIN/./-} pki_int_main ${ROOT_DOMAIN} ${INTERMEDIATE_CERT_TTL}
 create_role consul-${DEMO_DOMAIN/./-} pki_int_main ${DEMO_DOMAIN} ${INTERMEDIATE_CERT_TTL}
 create_role vault-${DEMO_DOMAIN/./-} pki_int_main ${DEMO_DOMAIN} ${INTERMEDIATE_CERT_TTL}
@@ -72,14 +75,14 @@ INITIAL_ROOT_TOKEN=/demo/initial_root_token
 
 # Initialize vault and capture output.
 echo $(green Initializing Vault)
-vault init | grep : > ${OUTPUT_FILE}
+vault operator init | grep : > ${OUTPUT_FILE}
 
 # Yeah, I made fun of this in the slides, but that's different!
 chmod 0600 ${OUTPUT_FILE}
 
 # Unseal the vault with the unseal keys
 for i in $(cat ${OUTPUT_FILE} | grep Unseal | cut -f 2 -d : | tr -d ' ');do
-  vault unseal $i
+  vault operator unseal $i
 done
 
 # Capture the root token from the output

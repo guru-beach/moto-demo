@@ -1,5 +1,8 @@
-# Import the demo magic to allow for more controlled demos
-. demo-magic.sh -d -p
+if [[ -z ${DEMO_WAIT} ]];then
+  DEMO_WAIT=0
+fi
+
+. demo-magic.sh -d -p -w ${DEMO_WAIT}
 
 vault () {
   # Wrapper to run vault command line from docker instance.   Use local mount
@@ -15,6 +18,9 @@ vault () {
     AUTH_ENV="-e VAULT_TOKEN=${VAULT_TOKEN} \
               -e VAULT_ADDR=http://${VAULT_HOST}:${VAULT_PORT}"
 
+  fi
+  if [ -n "${VAULT_PIPE}" ];then
+    OPTIONS="${OPTIONS} -t"
   fi
   VAULT_IP=$(docker inspect ${VAULT_DOCKER} | jq .[0].NetworkSettings.Networks.bridge.IPAddress | tr -d '"')
 
@@ -81,11 +87,11 @@ bootstrap_ca () {
   fi
 
   # Allow for certificate stores
-  echo $(green "Mounting CA Certificate PKI Backend")
+  echo $(green "Enabling CA Certificate PKI Secret Engine")
   pe "vault secrets enable pki"
 
   # Set max lease time for root pki setup
-  echo $(green "Tuning CA Certificate PKI Backend")
+  echo $(green "Tuning CA Certificate PKI Secret Engine")
   pe "vault secrets tune -max-lease-ttl=${ROOT_CERT_TTL} pki"
 
   #  ttl=${ROOT_CERT_TTL}
@@ -119,11 +125,11 @@ bootstrap_ca () {
   MAX_TTL=${INTERMEDIATE_CERT_TTL}
 
   # Setup intermediate CA endpoint
-  echo $(green "Mounting PKI Backend ${PKI_PATH}")
+  echo $(green "Enabling PKI Secret Engine at ${PKI_PATH}")
   pe "vault secrets enable -path=${PKI_PATH} pki"
 
   # Set max lease time for pki
-  echo $(green "Tuning PKI Backend ${PKI_PATH}")
+  echo $(green "Tuning PKI Secret Engine ${PKI_PATH}")
   pe "vault secrets tune -max-lease-ttl=${MAX_TTL} ${PKI_PATH}"
 
   # Use the HTTP API versus the command version due to quote removal when passing bash arguments with quotes in them into functions like the docker run
@@ -212,6 +218,7 @@ issue_cert () {
   jq -r .data.private_key ${OUTPUT_FILE} > ${LOCAL_MOUNT}/${DOMAIN}_key.pem
   echo $(green "Writing serial ${LOCAL_MOUNT}/${DOMAIN}.serial")
   jq -r .data.serial_number ${OUTPUT_FILE} > ${LOCAL_MOUNT}/${DOMAIN}.serial
+  echo
 
 }
 
@@ -219,5 +226,11 @@ verify () {
   # Check the validity of a cert
   CA_FILE=${LOCAL_MOUNT}/$1_ca_chain_full.pem
   CERT=${LOCAL_MOUNT}/$1_crt.pem
-  openssl verify -CAfile ${CA_FILE} ${CERT}
+  openssl verify -CAfile ${CA_FILE} ${CERT} | grep error &> /dev/null
+  if [[ $? -eq 0 ]];then
+    STATUS=$(red "invalid")
+  else
+    STATUS=$(green "valid")
+  fi
+  echo "Certificate ${CERT} is ${STATUS}"
 }
