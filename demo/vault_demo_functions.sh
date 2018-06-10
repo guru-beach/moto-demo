@@ -291,30 +291,40 @@ create_pki_consul_templates () {
   SERIAL_TMPL=${PREFIX}/serial.tmpl
   CONSUL_TMPL_PKI=${PREFIX}/consul_template.tmpl
 
+  # This is a no wait zone
+  echo $(yellow "Removing demo prompt waits for this section")
+  PROMPT_TIMEOUT_ORIG=${DEMO_WAIT}
+  PROMPT_TIMEOUT=3
+
   mkdir -p ${PREFIX}
 
+  echo $(green "Creating consul-template templates")
   cat > ${CERT_TMPL} <<EOA
 {{- with secret "${PKI_PATH}/issue/${ROLE}" "common_name=${COMMON_NAME}" "ttl=${TTL}" -}}
 {{ .Data.certificate }}{{ end }}
 EOA
-
+  pe "cat ${CERT_TMPL}"
   cat > ${CA_TMPL} <<EOB
 {{ with secret "${ROOT_PATH}/cert/ca" -}}
 {{ .Data.certificate }}{{ end }}
 {{ with secret "${PKI_PATH}/issue/${ROLE}" "common_name=${COMMON_NAME}" "ttl=${TTL}" -}}
 {{ .Data.issuing_ca }}{{ end }}
 EOB
+  pe "cat ${CA_TMPL}"
 
   cat > ${KEY_TMPL} <<EOC
 {{ with secret "${PKI_PATH}/issue/${ROLE}" "common_name=${COMMON_NAME}" "ttl=${TTL}" -}}
 {{ .Data.private_key }}{{ end }}
 EOC
+  pe "cat ${KEY_TMPL}"
 
   cat > ${SERIAL_TMPL} <<EOD
 {{ with secret "${PKI_PATH}/issue/${ROLE}" "common_name=${COMMON_NAME}" "ttl=${TTL}" -}}
 {{ .Data.serial_number }}{{ end }}
 EOD
+  pe "cat ${SERIAL_TMPL}"
 
+  echo $(green "Creating consul-template config file")
   cat > ${CONSUL_TMPL_PKI} <<EOF
   vault {
     address = "https://${VAULT_HOST}:8200"
@@ -345,4 +355,7 @@ EOD
     destination = "${LOCAL_MOUNT}/${COMMON_NAME}.serial"
   }
 EOF
+  pe "cat ${CONSUL_TMPL_PKI}"
+  echo $(yellow "Restoring demo prompt waits")
+  PROMPT_TIMEOUT=${PROMPT_TIMEOUT_ORIG}
 }

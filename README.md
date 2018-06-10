@@ -20,15 +20,22 @@ Requires a current version of Vagrant installed on the client machine. Run with 
 ## Start
 Requires sudo access to run docker updates.   
 
+Running run_me_first.sh creates the user-data and provisioning files.  If you want to customize the environment to match yours, edit demo/default_env.sh, or just set the required environment variables first, then run run_me_first.sh.
+
 ```
 $ git clone git@github.com:guru-beach/moto-demo.git
 $ cd moto-demo
+$ ./run_me_first.sh
 $ vagrant up
 $ vagrant ssh
 core@core-01 ~ $ sudo su -
 core-01 ~ # cd /demo
 core-01 demo #
 ```
+
+## Demo Magic
+
+These demos use a modified version of a script called [demo-magic.sh](https://github.com/paxtonhare/demo-magic) which is basically just a wrapper to show what commands are being run.   This also prevents the user for having to type or copypasta commands.  It also causes the commands to wait for user interaction (enter/return) to continue.   You can change this behavior by setting the DEMO_WAIT environment variable to some value larger than 0 (Which means wait for return).  The value is the amount of seconds to wait until automatically going to the next command.
 
 ## Demo 1
 
@@ -70,6 +77,13 @@ This demo should be run in another window alongside the currently running Demo2/
 core-01 demo # ./demo4_revoke_cert.sh
 ```
 
+## Demo 5
+
+This demo replaces the technique used in Demo 2 with consul-template.   Consul-template is smart enough to know when a secret expires and will automatically renew it based on its lease.   Once the templates are generated and consul-template is run, certificate verification will start taking place.   There's no need to renew certs ala Demo 3.   
+
+```
+core-01 demo # ./demo5_consul_template_renew.sh
+```
 ## Cleanup
 
 Though probably not a huge security risk, it's best to tear down this demo when done.

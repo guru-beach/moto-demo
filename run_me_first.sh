@@ -31,8 +31,9 @@ mkdir -p /etc/bash/bashrc.d
 echo "alias ll='ls -latr'" >> /etc/bash/bashrc.d/jake_preferences
 echo "set -o vi" >> /etc/bash/bashrc.d/jake_preferences
 
-cd /usr/local/bin
-wget ${CONSUL_TEMPLATE_URL} && chmod 0755 consul-template
+mkdir -p /opt/bin
+cd /opt/bin
+wget -q ${CONSUL_TEMPLATE_URL} && tar -xzvf ${CONSUL_TEMPLATE_BIN} && chmod 0755 consul-template
 EOL
 
 cat > user-data <<EOF 

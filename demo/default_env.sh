@@ -15,7 +15,8 @@ CONSUL_HOST=consul1.${DEMO_DOMAIN}
 
 CONSUL_TEMPLATE_VERSION=0.19.4
 # Fixing the arch because this is probably always going to run on a fixed platform in a Vagrant
-CONSUL_TEMPLATE_URL="https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.tgz"
+CONSUL_TEMPLATE_BIN="consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.tgz"
+CONSUL_TEMPLATE_URL="https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/${CONSUL_TEMPLATE_BIN}"
 
 # Root CA Certs can most likely be long-lived certs.  Set for 10 years
 ROOT_CERT_TTL=${ROOT_CERT_TTL:-87648h}
