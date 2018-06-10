@@ -15,7 +15,7 @@
 DEMO_PROMPT='[\u@\[\e[32;40m\]\h\[\e[0m\]]'
 
 # the speed to "type" the text
-TYPE_SPEED=20
+TYPE_SPEED=${TYPE_SPEED:-20}
 
 # no wait after "p" or "pe"
 NO_WAIT=false

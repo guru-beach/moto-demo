@@ -91,5 +91,13 @@ echo $(green Saved Initial Root Token to ${INITIAL_ROOT_TOKEN})
 . ${INITIAL_ROOT_TOKEN}
 
 # Why bootstrap twice?  Well, because the dev server is dead and didn't persist anything
+# We don't want to wait on this, just let it run automatically with a small pause
+echo
+PROMPT_TIMEOUT=1
+echo $(yellow "Changing demo mode to remove wait for return/enter and proceed after ${PROMPT_TIMEOUT}s")
+echo
+PROMPT_TIMEOUT=10
+wait
+PROMPT_TIMEOUT=1
 echo $(green Bootstrapping CA)
 bootstrap_ca

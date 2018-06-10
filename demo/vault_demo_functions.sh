@@ -4,13 +4,18 @@ fi
 
 . demo-magic.sh -d -p -w ${DEMO_WAIT}
 
+VAULT_CACERT=/etc/certs/${VAULT_HOST}_ca_chain_full.pem
+VAULT_CLIENT_CERT=/etc/certs/${VAULT_HOST}_crt.pem
+VAULT_CLIENT_KEY=/etc/certs/${VAULT_HOST}_key.pem
+VAULT_TOKEN=${VAULT_TOKEN}
+ 
 vault () {
   # Wrapper to run vault command line from docker instance.   Use local mount
   # for storing arbitrary data loaded on the local system
   if [ -n "${VAULT_USE_TLS}" ];then
-    AUTH_ENV="-e VAULT_CACERT=/etc/certs/${VAULT_HOST}_ca_chain_full.pem \
-              -e VAULT_CLIENT_CERT=/etc/certs/${VAULT_HOST}_crt.pem \
-              -e VAULT_CLIENT_KEY=/etc/certs/${VAULT_HOST}_key.pem \
+    AUTH_ENV="-e VAULT_CACERT=${VAULT_CACERT} \
+              -e VAULT_CLIENT_CERT=${VAULT_CLIENT_CERT} \
+              -e VAULT_CLIENT_KEY=${VAULT_CLIENT_KEY} \
               -e VAULT_ADDR=https://${VAULT_HOST}:${VAULT_PORT} \
               -e VAULT_TOKEN=${VAULT_TOKEN} \
               -v /etc/certs:/etc/certs"
@@ -88,11 +93,11 @@ bootstrap_ca () {
 
   # Allow for certificate stores
   echo $(green "Enabling CA Certificate PKI Secret Engine")
-  pe "vault secrets enable pki"
+  pe "vault secrets enable -path=${ROOT_PKI_PATH} pki"
 
   # Set max lease time for root pki setup
   echo $(green "Tuning CA Certificate PKI Secret Engine")
-  pe "vault secrets tune -max-lease-ttl=${ROOT_CERT_TTL} pki"
+  pe "vault secrets tune -max-lease-ttl=${ROOT_CERT_TTL} ${ROOT_PKI_PATH}"
 
   #  ttl=${ROOT_CERT_TTL}
 
@@ -109,16 +114,16 @@ bootstrap_ca () {
     ${CURL_CERTS} \
     --request POST \
     --data @${LOCAL_INPUT_PARAMS} \
-    ${VAULT_ADDR}/v1/pki/root/generate/internal > ${OUTPUT_FILE}"
+    ${VAULT_ADDR}/v1/${ROOT_PKI_PATH}/root/generate/internal > ${OUTPUT_FILE}"
 
   jq -r '.data.certificate' ${OUTPUT_FILE} > ${LOCAL_MOUNT}/CA_cert.pem
   jq -r '.data.serial_number' ${OUTPUT_FILE} > ${LOCAL_MOUNT}/CA_cert.serial
 
   # Cert CRL and CA information
   echo $(green "Updating CRL And CA information")
-  pe "vault write pki/config/urls \
-    issuing_certificates=${VAULT_ADDR}/v1/pki/ca \
-    crl_distribution_points=${VAULT_ADDR}/v1/pki/crl"
+  pe "vault write ${ROOT_PKI_PATH}/config/urls \
+    issuing_certificates=${VAULT_ADDR}/v1/${ROOT_PKI_PATH}/ca \
+    crl_distribution_points=${VAULT_ADDR}/v1/${ROOT_PKI_PATH}/crl"
 
   # Abstracting name for re-usability
   PKI_PATH=pki_int_main
@@ -155,7 +160,7 @@ bootstrap_ca () {
   OUTPUT_FILE=${LOCAL_MOUNT}/intermediate_csr_output.json
   echo $(green "Generating Intermediate PEM cert.  JSON output found at ${OUTPUT_FILE}")
   echo $(green "Certificate located at ${LOCAL_MOUNT}/${PKI_PATH}.pem")
-  pe "vault write -format=json pki/root/sign-intermediate \
+  pe "vault write -format=json ${ROOT_PKI_PATH}/root/sign-intermediate \
     csr=@${DOCKER_MOUNT}/${PKI_PATH}.csr \
     format=pem_bundle \
     > ${OUTPUT_FILE}"
@@ -189,6 +194,41 @@ create_role () {
       allow_any_name=true \
       generate_lease=true \
       enforce_hostnames=false"
+}
+
+create_issue_policy () {
+  POLICY_NAME=${1:-$POLICY_NAME}
+  PKI_PATH=${2:-$PKI_PATH}
+  ROOT_PATH=${3:-$ROOT_PKI_PATH}
+
+  echo $(green "Creating policy to assign to token(s)")
+  pe "cat > ${LOCAL_MOUNT}/policy-${POLICY_NAME} << EOF 
+path \"${PKI_PATH}/issue*\" {
+    capabilities = [\"create\",\"update\"]
+}
+
+path \"${ROOT_PATH}/cert/ca\" {
+    capabilities = [\"read\"]
+}
+
+path \"auth/token/renew\" {
+    capabilities = [\"update\"]
+}
+
+path \"auth/token/renew-self\" {
+    capabilities = [\"update\"]
+}
+EOF"
+ pe "vault policy write ${POLICY_NAME} ${DOCKER_MOUNT}/policy-${POLICY_NAME}"
+}
+
+create_token () {
+  POLICY_NAME=${1:-$POLICY_NAME}
+  TTL=${2:-$DEFAULT_TOKEN_TTL}
+
+  # This is a single policy token.  For this demo, that works.  
+  echo $(green "Creating token with single policy into ${LOCAL_MOUNT}/token-${POLICY_NAME}")
+  pe "vault token create -policy=${POLICY_NAME} -field=token -ttl=${TTL} > ${LOCAL_MOUNT}/token-${POLICY_NAME}"
 }
 
 issue_cert () {
@@ -233,4 +273,76 @@ verify () {
     STATUS=$(green "valid")
   fi
   echo "Certificate ${CERT} is ${STATUS}"
+}
+
+create_pki_consul_templates () {
+  COMMON_NAME=${1:-$COMMON_NAME}
+  TTL=${2:-$TTL}
+  PRE_ROLE=${3:-$ROLE}
+  ROLE=${PRE_ROLE//./-}
+  ROOT_PATH=${4:-$ROOT_PKI_PATH}
+  PKI_PATH=${5:-$INTERMEDIATE_CA_PATH}
+
+  CONSUL_TMPL_PKI_DIR=/etc/consul_templates/pki
+  PREFIX=${CONSUL_TMPL_PKI_DIR}/${COMMON_NAME}
+  CA_TMPL=${PREFIX}/ca.tmpl
+  CERT_TMPL=${PREFIX}/cert.tmpl
+  KEY_TMPL=${PREFIX}/key.tmpl
+  SERIAL_TMPL=${PREFIX}/serial.tmpl
+  CONSUL_TMPL_PKI=${PREFIX}/consul_template.tmpl
+
+  mkdir -p ${PREFIX}
+
+  cat > ${CERT_TMPL} <<EOA
+{{- with secret "${PKI_PATH}/issue/${ROLE}" "common_name=${COMMON_NAME}" "ttl=${TTL}" -}}
+{{ .Data.certificate }}{{ end }}
+EOA
+
+  cat > ${CA_TMPL} <<EOB
+{{ with secret "${ROOT_PATH}/cert/ca" -}}
+{{ .Data.certificate }}{{ end }}
+{{ with secret "${PKI_PATH}/issue/${ROLE}" "common_name=${COMMON_NAME}" "ttl=${TTL}" -}}
+{{ .Data.issuing_ca }}{{ end }}
+EOB
+
+  cat > ${KEY_TMPL} <<EOC
+{{ with secret "${PKI_PATH}/issue/${ROLE}" "common_name=${COMMON_NAME}" "ttl=${TTL}" -}}
+{{ .Data.private_key }}{{ end }}
+EOC
+
+  cat > ${SERIAL_TMPL} <<EOD
+{{ with secret "${PKI_PATH}/issue/${ROLE}" "common_name=${COMMON_NAME}" "ttl=${TTL}" -}}
+{{ .Data.serial_number }}{{ end }}
+EOD
+
+  cat > ${CONSUL_TMPL_PKI} <<EOF
+  vault {
+    address = "https://${VAULT_HOST}:8200"
+    token = "${VAULT_TOKEN}"
+    ssl {
+      cert    = "${VAULT_CLIENT_CERT}"
+      key     = "${VAULT_CLIENT_KEY}"
+      ca_cert = "${VAULT_CACERT}"
+    }
+  }
+  template {
+    source      = "${CERT_TMPL}"
+    destination = "${LOCAL_MOUNT}/${COMMON_NAME}_crt.pem"
+  }
+
+  template {
+    source      = "${KEY_TMPL}"
+    destination = "${LOCAL_MOUNT}/${COMMON_NAME}_key.pem"
+  }
+
+  template {
+    source      = "${CA_TMPL}"
+    destination = "${LOCAL_MOUNT}/${COMMON_NAME}_ca_chain_full.pem"
+  }
+
+  template {
+    source      = "${SERIAL_TMPL}"
+    destination = "${LOCAL_MOUNT}/${COMMON_NAME}.serial"
+  }
+EOF
 }
